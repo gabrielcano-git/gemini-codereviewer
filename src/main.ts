@@ -1,18 +1,18 @@
 import { readFileSync } from "fs";
 import * as core from "@actions/core";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { Octokit } from "@octokit/rest";
 import parseDiff, { Chunk, File } from "parse-diff";
 import minimatch from "minimatch";
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
-const OPENAI_API_KEY: string = core.getInput("OPENAI_API_KEY");
-const OPENAI_API_MODEL: string = core.getInput("OPENAI_API_MODEL");
+const GEMINI_API_KEY: string = core.getInput("GEMINI_API_KEY");
+const GEMINI_MODEL: string = core.getInput("GEMINI_MODEL") || "gemini-1.5-flash";
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY,
+const genAI = new GoogleGenAI({
+  apiKey: GEMINI_API_KEY,
 });
 
 interface PRDetails {
@@ -114,32 +114,32 @@ async function getAIResponse(prompt: string): Promise<Array<{
   lineNumber: string;
   reviewComment: string;
 }> | null> {
-  const queryConfig = {
-    model: OPENAI_API_MODEL,
-    temperature: 0.2,
-    max_tokens: 700,
-    top_p: 1,
-    frequency_penalty: 0,
-    presence_penalty: 0,
-  };
-
   try {
-    const response = await openai.chat.completions.create({
-      ...queryConfig,
-      // return JSON if the model supports it:
-      ...(OPENAI_API_MODEL === "gpt-4-1106-preview"
-        ? { response_format: { type: "json_object" } }
-        : {}),
-      messages: [
+    const model = genAI.models.generateContentStream({
+      model: GEMINI_MODEL,
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 700,
+        topP: 1,
+      },
+      contents: [
         {
-          role: "system",
-          content: prompt,
+          role: 'user',
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
         },
       ],
     });
 
-    const res = response.choices[0].message?.content?.trim() || "{}";
-    return JSON.parse(res).reviews;
+    let fullResponse = '';
+    for await (const chunk of model) {
+      fullResponse += chunk.text || '';
+    }
+
+    return JSON.parse(fullResponse).reviews;
   } catch (error) {
     console.error("Error:", error);
     return null;
