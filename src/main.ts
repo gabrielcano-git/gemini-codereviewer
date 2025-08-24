@@ -7,7 +7,7 @@ import minimatch from "minimatch";
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
 const GEMINI_API_KEY: string = core.getInput("GEMINI_API_KEY");
-const GEMINI_MODEL: string = core.getInput("GEMINI_MODEL") || "gemini-1.5-flash";
+const GEMINI_MODEL: string = core.getInput("GEMINI_MODEL") || "gemini-2.5-pro";
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
