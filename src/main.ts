@@ -135,7 +135,7 @@ async function getAIResponse(prompt: string): Promise<Array<{
     });
 
     let fullResponse = '';
-    for await (const chunk of model) {
+    for await (const chunk of await model) {
       fullResponse += chunk.text || '';
     }
 
